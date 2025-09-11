@@ -1,0 +1,37 @@
+---
+title: Architecture
+---
+
+### Points System
+
+<img src="/Architecture.png" alt="IOTA Logo" width="800" />
+
+
+
+This system integrates on-chain and off-chain components to enable point request creation from other protocols and dashboard querying from the frontend. The process consists of the following steps:
+1.Other Protocol
+A protocol sends an on-chain transaction to Liquidlink package using the send_add_point_req function. This creates a request to add points for a user.
+
+2.Liquidlink
+After receiving the request, Liquidlink logs the request on-chain. The Indexer then listens to and fetches these on-chain events, processing them and adding the data to a dashboard (share object)
+
+3.Frontend
+The frontend application queries the Indexer to retrieve point data and user information from the dashboard, which is then displayed to users in the UI.
+Share Points System
+
+### Share Points System
+
+<img src="/Architecture2.png" alt="IOTA Logo" width="800" />
+
+This system integrates both on-chain and off-chain components to manage referral relationships and point distribution between inviters and invitees.
+
+### Process Flow:
+
+Off-chain Referral Code Creation & Input
+1. An Inviter generates a referral code via the Frontend Referral module.
+    - An Invitee inputs this referral code in the frontend.
+    - The frontend then sends this information to the Backend, which stores the inviter-invitee relationship off-chain.
+
+2. Point Distribution via Liquidlink
+    - When an admin triggers add_point_by_admin(), Liquidlink retrieves inviter and invitee information from the Share package.
+    - Based on this information, points are distributed accordingly to both the inviter and invitee.

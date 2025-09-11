@@ -1,0 +1,72 @@
+---
+title: How to integrate liquidlink in MOVE?
+---
+
+
+1.Create custom package or update origin package
+2.The package calls use liquidlink_protocol::point::send_add_point_req; to send a request for adding points
+3.The Indexer fetch the request, adds the points to the dashboard, and refreshes the frontend
+Example contract:
+
+```js
+
+module periphery::periphery {
+​
+    use std::ascii::String;
+    use liquidlink_protocol::point::send_add_point_req;
+​
+    public struct IotaWitness has drop {}
+​
+    public fun user_add_point(action: String, value: u256, ctx: &mut TxContext ) {
+        send_add_point_req(
+            &witness(),
+            action,
+            value,
+            ctx
+        )
+    }
+​
+    public(package) fun witness(): IotaWitness {
+        IotaWitness {}
+    }
+​
+}
+```
+
+- action: "add" string by default
+- value: amount of points you want to add
+
+### Stake request
+Sending stake request
+
+1.Sending a stake request to accumulate the points in the Dashboard.
+
+2.Package integration example: https://github.com/Liquidlink-Lab/liquidlink-staking-point-demo/blob/main/staking/sources/core.move#L29
+
+3.Frontend example: https://github.com/Liquidlink-Lab/liquidlink-staking-point-demo/blob/main/my-website/components/actions.tsx#L78
+
+StakePointRequest:
+```js
+
+public struct StakePointRequest<phantom T> has key{
+        id: UID,
+        owner: address,
+        action: String, // borrow/psm
+        weight: u256, // amount
+        duration: u64,  
+        timestamp: u64 // createAt
+}
+```
+
+
+- owner: owner address
+- action: custom action name (eg. “borrow” or “stake” …)
+- weight: user deposit amount
+- duration: time duration
+- timestamp: create time
+
+
+<Cards>
+  <Card title="Learn more about MOVE" href="https://move-book.com/" />
+  <Card title="Learn more about SUI" href="https://sui.io/intro-to-sui" />
+</Cards>
