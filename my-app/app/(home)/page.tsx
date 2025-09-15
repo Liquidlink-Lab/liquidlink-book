@@ -1,18 +1,12 @@
 import Link from 'next/link';
+import Layout from '../docs/layout';
 
 export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col justify-center text-center">
-      <h1 className="mb-4 text-2xl font-bold">Liquidlink</h1>
-      <p className="text-fd-muted-foreground">
-        You can open{' '}
-        <Link
-          href="/docs"
-          className="text-fd-foreground font-semibold underline"
-        >
-          /docs
-        </Link>{' '}
-        and see the documentation.
+      <h1 className="mb-4 text-3xl font-bold">Liquidlink</h1>
+      <p className="text-fd-muted-foreground text-2xl">
+       A on chain incentive system on SUI & IOTA.
       </p>
     </main>
   );
