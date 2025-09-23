@@ -1,5 +1,5 @@
 ---
-title: Iota Snap
+title: IOTA Snap
 ---
 
 #### Developers can also integrate IOTA into their Dapps using the Snap.
@@ -27,6 +27,9 @@ npm create next-app@latest --ts
 
 
 ```js
+# install IOTA SDK
+npm install @iota/dapp-kit @iota/iota-sdk  @iota/wallet-standard
+
 # Add the IOTA Snap integration
 npm install @liquidlink-lab/iota-snap-for-metamask
 ```
@@ -50,6 +53,11 @@ registerIotaSnapWallet,
 2. Register IOTA Snap wallet: Call registerIotaSnapWallet() to add the IOTA Snap provider into your wallet registry/list. MetaMask may prompt users to install/enable the Snap.
 
 3. Connect Iota snap to login: Trigger the provider’s connect flow from your UI to let users log in to IOTA with MetaMask and manage their IOTA account.
+
+
+**The remaining flow including manage the wallet and executing transactions is handle by the IOTA SDK. Everything else remains the same, with no additional changes required.**
+
+&emsp;
 
 
 ### IOTA Snap wallet
