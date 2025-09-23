@@ -1,0 +1,67 @@
+---
+title: Iota Snap
+---
+
+#### Developers can also integrate IOTA into their Dapps using the Snap.
+
+<img src="/iota-snap-logo.png" alt="IOTA Logo" width="100" />
+
+
+This page shows how to integrate MetaMask with IOTA Snap in a Next.js frontend so users can log in to IOTA with MetaMask.
+
+### Prerequisites
+
+- Node.js 18+
+
+- MetaMask desktop extension installed and unlocked
+
+- Next.js project (App Router or Pages Router)
+
+### Install
+
+```js
+# Nextjs
+npm create next-app@latest --ts
+```
+
+
+
+```js
+# Add the IOTA Snap integration
+npm install @liquidlink-lab/iota-snap-for-metamask
+```
+
+
+
+#### Import
+```js
+import {
+metaMaskAvailable,
+registerIotaSnapWallet,
+} from "@liquidlink-lab/iota-snap-for-metamask";
+```
+
+
+
+### Integration Steps 
+
+1. Check MetaMask availability : Use metaMaskAvailable() to confirm MetaMask is present. Avoid calling wallet APIs during SSR.
+
+2. Register IOTA Snap wallet: Call registerIotaSnapWallet() to add the IOTA Snap provider into your wallet registry/list. MetaMask may prompt users to install/enable the Snap.
+
+3. Connect Iota snap to login: Trigger the provider’s connect flow from your UI to let users log in to IOTA with MetaMask and manage their IOTA account.
+
+
+### IOTA Snap wallet
+
+Link: http://snap.liquidlink.io/
+
+Github Link: https://github.com/Liquidlink-Lab/iota-snap-package-main/tree/main/frontend  
+
+Although you can use the IOTA Snap to sign transactions and manage your wallet, MetaMask cannot display IOTA wallet assets. You can use snap.liquidlink.io to manage your asset
+
+
+
+&emsp;
+&emsp;
+&emsp;
