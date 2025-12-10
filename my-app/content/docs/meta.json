@@ -1,3 +1,17 @@
 {
-  "pages": [  "---Introduction---","index", "profile",  "---Develop---","works","integrate","architecture","iota-snap","resource",  "---Other---","contant"]
+  "pages": [
+    "---Introduction---",
+    "index",
+    "profile",
+    "---Develop---",
+    "architecture",
+    "integrate",
+    "works",
+    "iota-snap",
+    "resource",
+    "---Future---",
+    "v2-objective",
+    "---Other---",
+    "contant"
+  ]
 }

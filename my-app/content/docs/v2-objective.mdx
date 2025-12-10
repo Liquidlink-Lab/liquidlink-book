@@ -1,0 +1,56 @@
+---
+title: LiquidLink v2 Objectives
+---
+
+### Overview
+
+Architecture goals for LiquidLink v2: deliver a flexible, verifiable scoring system that lets multiple parties award points concurrently, convert points into consumable assets that only circulate within the LiquidLink protocol, and keep the data model simple, extensible, and easy to integrate.
+
+### Functional Requirements
+
+- Scoring modes: support simple add/subtract and time-weighted accumulation; allow multiple updates to the same account.
+- Scoring actors: scoring rights can be granted to multiple parties; triggers may come from project owners or LiquidLink itself.
+- Verification: any party can verify any account’s points; provide an SDK for automation and third-party checks.
+- Point trading: points can be redeemed into consumable objects that are tradable only within the LiquidLink protocol.
+
+### Non-Functional Requirements
+
+- Easy integration: clear APIs and examples so projects can onboard with low effort.
+- Minimal data model: keep objects lean to avoid heavy migrations during upgrades.
+- Scalable: architecture should scale horizontally with scoring events and trading volume.
+
+### Summary
+
+This version separates scoring and trading into composable modules, assumes multi-party scoring by default, and exposes public verification flows. Redeemed assets stay inside the LiquidLink protocol to keep risk bounded. A minimal data model plus SDK and examples lowers integration cost and leaves room for future feature growth.
+
+### Architecture Diagrams
+
+**Technical flow**
+
+<Mermaid
+  chart={`flowchart LR
+    A[Other Protocols / Custom Packages] -->|send_add_point_req| B[LiquidLink On-Chain]
+    B -->|events| C[Indexer]
+    C -->|API / SDK| D[Verification & Apps]
+    D -->|read dashboard| E[Points Store]
+    D -->|redeem| F[Protocol-Scoped Assets]
+    F -->|trade / swap| G[Marketplace]
+    A -->|admin / multi-party scoring| B
+    D -->|verify any account| B
+  `}
+/>
+
+**User-side view**
+
+<Mermaid
+  chart={`flowchart LR
+    P[Project Owner / Admin] -->|configure scoring rules| Q[LiquidLink Console]
+    P -->|issue points| R[Scoring Module + Dashboard]
+    U[Users] -->|earn points| R
+    U -->|redeem| S[Protocol Asset]
+    V[Verifiers / Partners] -->|SDK verify| T[Public Verification API]
+    Q --> R
+    R -->|dashboard view| U
+    S -->|trade| U
+  `}
+/>
