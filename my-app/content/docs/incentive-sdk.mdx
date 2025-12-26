@@ -3,9 +3,9 @@ title: Incentive SDK
 description: Client utilities for reading LiquidLink scoreboards on Sui/IOTA.
 ---
 
-## Overview
+# liquidlink-sdk
 
-`liquidlink-sdk` wraps the Move scoreboard package so any app can query point balances, run linear-time calculations, and read on-chain events from Sui or IOTA. It is built on top of `unimove-sdk` and exposes a thin, chain-aware client.
+SDK client for Liquidlink scoreboards on Sui/IOTA, built on top of `unimove-sdk`.
 
 ## Installation
 
@@ -13,17 +13,21 @@ description: Client utilities for reading LiquidLink scoreboards on Sui/IOTA.
 npm install liquidlink-sdk
 ```
 
-## Quick Example
+## Example
+
+The following example matches `index.ts`:
 
 ```ts
-import { Client } from 'liquidlink-sdk';
+import { Client } from "liquidlink-sdk";
 
-const sdk = new Client({ chain: 'iota', network: 'testnet' });
+const TARGET_ADDRESS = "0x..."
+const REGULAR_SCOREBOARD_ID = "0x..."
+const LINEAR_SCOREBOARD_ID = "0x..."
 
-const REGULAR_SCOREBOARD_ID = '0x...';
-const TARGET_ADDRESS = '0x...';
-
+const sdk = new Client({ chain: "iota", network: "testnet" });
+console.log("Regular Scoreboard");
 console.log(
+  "getScoreInfo",
   await sdk.getScoreInfo({
     scoreboardId: REGULAR_SCOREBOARD_ID,
     targetAddress: TARGET_ADDRESS,
@@ -31,6 +35,7 @@ console.log(
 );
 
 console.log(
+  "getComputedScore",
   await sdk.getComputedScore({
     scoreboardId: REGULAR_SCOREBOARD_ID,
     targetAddress: TARGET_ADDRESS,
@@ -38,40 +43,121 @@ console.log(
   }),
 );
 
-console.log('Available events', sdk.getAvailableEventTypes());
+console.log("Linear Scoreboard");
+
+console.log(
+  "getScoreInfo",
+  await sdk.getScoreInfo({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+  }),
+);
+
+console.log(
+  "getComputedScore",
+  await sdk.getComputedScore({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+    opts: { linear: true },
+  }),
+);
+
+console.log("getAvailableEventTypes", sdk.getAvailableEventTypes());
+
+console.log(
+  "getEventsByAddress",
+  await sdk.getEventsByAddress({
+    //   scoreboardId: "scoreboard_1_id",
+    scoreboardIds: [
+      "scoreboard_1_id",
+      "scoreboard_2_id",
+      "scoreboard_3_id",
+    ],
+    targetAddress: TARGET_ADDRESS,
+    //   eventTypes: [
+    //     "0x...::event::ScoreAdded",
+    //     "0x...::event::ScoreSubtracted",
+    //     "0x...::event::LinearTimeScoreSet",
+    //     "0x...::event::LinearTimeScoreUpdated",
+    //   ],
+    limit: 5,
+    //   order: "descending",
+  }),
+);
 ```
 
 ## Client API
 
 ### `new Client({ chain, network, rpcUrl? })`
 
-Creates an SDK instance for a specific chain/network. `chain` is `"sui"` or `"iota"`, `network` is `"mainnet"` or `"testnet"` (default `"mainnet"`), and `rpcUrl` optionally overrides the default fullnode URL.
+Creates a client for a specific chain/network.
+
+Parameters:
+- `chain`: `"sui"` or `"iota"`.
+- `network`: `"mainnet"` or `"testnet"` (default `"mainnet"`).
+- `rpcUrl`: optional RPC endpoint override (defaults to the chain SDK fullnode URL).
 
 ### `getClient()`
 
-Returns the underlying chain client (e.g., Sui/IOTA SDK client) for direct RPC access when needed.
+Returns the underlying chain client instance from the selected SDK.
 
 ### `getConfig()`
 
-Returns the pre-baked package metadata (package IDs, router addresses, etc.) for the selected chain/network.
+Returns the chain/network config from `src/consts.ts` (package IDs, etc.).
 
 ### `getAvailableEventTypes()`
 
-Lists fully-qualified Move event types emitted by the incentive system on the configured chain. Useful when filtering events.
+Returns fully-qualified Move event type strings for the current chain/network package.
+
+Returns:
+- `string[]` of event type names.
 
 ### `getScoreInfo({ scoreboardId, targetAddress })`
 
-Fetches the raw `score`, `scorePerDuration`, `duration`, and `updatedAt` stored for an address in a scoreboard. Returns zeros if the entry does not exist.
+Fetches the score entry for an address within a scoreboard. If no entry exists, returns zeroed fields.
+
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
+
+Returns (numbers):
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
 
 ### `getComputedScore({ scoreboardId, targetAddress, opts? })`
 
-Runs either a plain score lookup or a linear-time computation (when `opts.linear` is `true`) using the stored state. Returns `computedScore` along with the raw fields.
+Computes a score based on `getScoreInfo`.
+
+- When `opts.linear` is `true`, it applies a linear time-based computation using `scorePerDuration`.
+
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
+- `opts.linear`: enable time-based linear scoring (default `false`).
+
+Returns (numbers):
+- `computedScore`
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
 
 ### `getEventsByAddress({ targetAddress, eventTypes?, scoreboardId?, scoreboardIds?, cursor?, limit?, order? })`
 
-Reads events emitted by the scoreboard modules, filtered by sender address. Either `scoreboardId` or `scoreboardIds` must be provided. Optional filters:
+Fetches events by sender address and filters them on the client side.
 
-- `eventTypes`: limit to specific event type strings.
-- `cursor` / `limit` / `order`: pagination and sort options (`order` defaults to `"descending"`).
+Required:
+- Provide `scoreboardId` or `scoreboardIds` (throws if neither is provided).
 
-Returns `{ data, cursor, hasNextPage }` where `cursor` can be reused for pagination.
+Parameters:
+- `targetAddress`: sender address for the RPC query.
+- `eventTypes`: fully-qualified Move event types to include (default: all event types; use `getAvailableEventTypes()` to list valid values).
+- `scoreboardId`/`scoreboardIds`: filter by `parsedJson.scoreboard_id`.
+- `cursor`: pagination cursor from a previous call (default: none).
+- `limit`: max number of events to fetch (default `100`).
+- `order`: `"ascending"` or `"descending"` (default `"descending"`).
+
+Returns:
+- `{ data, cursor, hasNextPage }`, where `cursor` is the `nextCursor` for pagination and `hasNextPage` indicates whether more results are available.
