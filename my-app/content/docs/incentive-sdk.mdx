@@ -1,105 +1,158 @@
 ---
 title: Incentive SDK
-description: Client utilities for reading LiquidLink scoreboards on Sui/IOTA. Built on top of `unimove-sdk`.
+description: SDK client for Liquidlink scoreboards on Sui/IOTA, built on top of `unimove-sdk`.
 ---
-
-## Overview
-
-`liquidlink-sdk` is a thin TypeScript wrapper that understands LiquidLink scoreboards (regular + linear) and exposes a chain-aware client powered by `unimove-sdk`. It knows the object layout, supplies zero-safe defaults, and provides helpers for pulling event logs so integrators can ship dashboards or bots quickly.
-
-### Installation
+## Installation
 
 ```bash
 npm install liquidlink-sdk
 ```
 
-## Quick example
+## Example
+
+The following example matches `index.ts`:
 
 ```ts
-import { Client } from 'liquidlink-sdk';
+import { Client } from "liquidlink-sdk";
 
-const TARGET_ADDRESS = '0x...';
-const REGULAR_SCOREBOARD_ID = '0x...';
-const LINEAR_SCOREBOARD_ID = '0x...';
+const TARGET_ADDRESS = "0x..."
+const REGULAR_SCOREBOARD_ID = "0x..."
+const LINEAR_SCOREBOARD_ID = "0x..."
 
-const sdk = new Client({ chain: 'iota', network: 'testnet' });
+const sdk = new Client({ chain: "iota", network: "testnet" });
+console.log("Regular Scoreboard");
+console.log(
+  "getScoreInfo",
+  await sdk.getScoreInfo({
+    scoreboardId: REGULAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+  }),
+);
 
-console.log('Regular score info', await sdk.getScoreInfo({
-  scoreboardId: REGULAR_SCOREBOARD_ID,
-  targetAddress: TARGET_ADDRESS,
-}));
+console.log(
+  "getComputedScore",
+  await sdk.getComputedScore({
+    scoreboardId: REGULAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+    opts: { linear: false },
+  }),
+);
 
-console.log('Regular computed score', await sdk.getComputedScore({
-  scoreboardId: REGULAR_SCOREBOARD_ID,
-  targetAddress: TARGET_ADDRESS,
-  opts: { linear: false },
-}));
+console.log("Linear Scoreboard");
 
-console.log('Linear computed score', await sdk.getComputedScore({
-  scoreboardId: LINEAR_SCOREBOARD_ID,
-  targetAddress: TARGET_ADDRESS,
-  opts: { linear: true },
-}));
+console.log(
+  "getScoreInfo",
+  await sdk.getScoreInfo({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+  }),
+);
 
-console.log('Event types', sdk.getAvailableEventTypes());
+console.log(
+  "getComputedScore",
+  await sdk.getComputedScore({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+    opts: { linear: true },
+  }),
+);
 
-console.log('Recent events', await sdk.getEventsByAddress({
-  targetAddress: TARGET_ADDRESS,
-  scoreboardIds: [REGULAR_SCOREBOARD_ID, LINEAR_SCOREBOARD_ID],
-  limit: 5,
-}));
+console.log("getAvailableEventTypes", sdk.getAvailableEventTypes());
+
+console.log(
+  "getEventsByAddress",
+  await sdk.getEventsByAddress({
+    //   scoreboardId: "scoreboard_1_id",
+    scoreboardIds: [
+      "scoreboard_1_id",
+      "scoreboard_2_id",
+      "scoreboard_3_id",
+    ],
+    targetAddress: TARGET_ADDRESS,
+    //   eventTypes: [
+    //     "0x...::event::ScoreAdded",
+    //     "0x...::event::ScoreSubtracted",
+    //     "0x...::event::LinearTimeScoreSet",
+    //     "0x...::event::LinearTimeScoreUpdated",
+    //   ],
+    limit: 5,
+    //   order: "descending",
+  }),
+);
 ```
 
-## API reference
+## Client API
 
 ### `new Client({ chain, network, rpcUrl? })`
 
-Creates a client for a specific chain/network. `chain` is `"sui"` or `"iota"`, `network` defaults to `"mainnet"`, and `rpcUrl` overrides the fullnode URL returned by `unimove-sdk`.
+Creates a client for a specific chain/network.
+
+Parameters:
+- `chain`: `"sui"` or `"iota"`.
+- `network`: `"mainnet"` or `"testnet"` (default `"mainnet"`).
+- `rpcUrl`: optional RPC endpoint override (defaults to the chain SDK fullnode URL).
 
 ### `getClient()`
 
-Returns the underlying Sui/IOTA SDK client so you can run low-level RPC calls alongside the helpers.
+Returns the underlying chain client instance from the selected SDK.
 
 ### `getConfig()`
 
-Returns the selected block from `CONFIG` (package IDs, router references, etc.).
+Returns the chain/network config from `src/consts.ts` (package IDs, etc.).
 
 ### `getAvailableEventTypes()`
 
-Returns the four fully-qualified Move event types emitted by the incentive package (add/subtract/set/update). Useful when building filters for `getEventsByAddress`.
+Returns fully-qualified Move event type strings for the current chain/network package.
+
+Returns:
+- `string[]` of event type names.
 
 ### `getScoreInfo({ scoreboardId, targetAddress })`
 
-Reads the scoreboard table entry for `targetAddress`. If no entry exists the SDK returns:
+Fetches the score entry for an address within a scoreboard. If no entry exists, returns zeroed fields.
 
-```ts
-{ duration: 0, score: 0, scorePerDuration: 0, updatedAt: 0 }
-```
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
 
-so the rest of your code can treat “not found” as zeros.
+Returns (numbers):
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
 
-### `getComputedScore({ scoreboardId, targetAddress, opts })`
+### `getComputedScore({ scoreboardId, targetAddress, opts? })`
 
-Wraps `getScoreInfo` and optionally computes a client-side linear projection:
+Computes a score based on `getScoreInfo`.
 
-- When `opts.linear` is `true` and both `duration` and `scorePerDuration` are positive, it calculates  
-  `score + (scorePerDuration * (Date.now() - updatedAt)) / duration`.
-- Otherwise it simply returns the stored `score`.
+- When `opts.linear` is `true`, it applies a linear time-based computation using `scorePerDuration`.
 
-The response always includes `{ computedScore, score, scorePerDuration, duration, updatedAt }`.
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
+- `opts.linear`: enable time-based linear scoring (default `false`).
+
+Returns (numbers):
+- `computedScore`
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
 
 ### `getEventsByAddress({ targetAddress, eventTypes?, scoreboardId?, scoreboardIds?, cursor?, limit?, order? })`
 
-Fetches events by sender address and filters the payload on the client:
+Fetches events by sender address and filters them on the client side.
 
-- Provide either `scoreboardId` or `scoreboardIds` (it throws if neither is supplied).
-- `eventTypes` lets you narrow the results to specific Move event types (use `getAvailableEventTypes()` to build the list).
-- `cursor`, `limit`, and `order` follow the underlying RPC pagination semantics (`order` defaults to `"descending"`).
+Required:
+- Provide `scoreboardId` or `scoreboardIds` (throws if neither is provided).
 
-The helper keeps only events whose `parsedJson.scoreboard_id` matches the provided IDs and returns `{ data, cursor, hasNextPage }`.
+Parameters:
+- `targetAddress`: sender address for the RPC query.
+- `eventTypes`: fully-qualified Move event types to include (default: all event types; use `getAvailableEventTypes()` to list valid values).
+- `scoreboardId`/`scoreboardIds`: filter by `parsedJson.scoreboard_id`.
+- `cursor`: pagination cursor from a previous call (default: none).
+- `limit`: max number of events to fetch (default `100`).
+- `order`: `"ascending"` or `"descending"` (default `"descending"`).
 
-## Tips
-
-- **Zero-safe lookups:** Treat zeroed fields as “no prior points” rather than an error.
-- **Linear UI widgets:** Poll `getComputedScore` with `opts.linear` when you need a live-updating staking indicator.
-- **Event history:** `getEventsByAddress` is ideal for user-centric history views; for protocol-wide analytics, pair it with your own indexer and batching logic.
+Returns:
+- `{ data, cursor, hasNextPage }`, where `cursor` is the `nextCursor` for pagination and `hasNextPage` indicates whether more results are available.
