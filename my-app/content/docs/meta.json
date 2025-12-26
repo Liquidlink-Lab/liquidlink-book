@@ -1,3 +1,20 @@
 {
-  "pages": [  "---Introduction---","index", "profile",  "---Develop---","works","integrate","architecture","iota-snap","resource",  "---Other---","contant"]
+  "pages": [
+    "---Introduction---",
+    "index",
+    "profile",
+    "---Develop---",
+    "works",
+    "integrate",
+    "architecture",
+    "iota-snap",
+    "resource",
+    "---Incentive System---",
+    "incentive-objective",
+    "incentive-design",
+    "incentive-integrate",
+    "incentive-sdk",
+    "---Other---",
+    "contant"
+  ]
 }

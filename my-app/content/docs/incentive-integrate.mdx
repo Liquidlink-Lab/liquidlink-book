@@ -1,0 +1,153 @@
+---
+title: Incentive Integration Guide
+description: Step-by-step walkthrough for projects that want to plug LiquidLink scoreboards into their own Move contracts and frontend.
+---
+
+## Why integrate?
+
+LiquidLink already ships the core `liquidlink_incenctive_system` package plus an integration example (`iota/integrate_example`). By following this guide a project can:
+
+- obtain `ProjectCap` / `PointCap` safely from the protocol
+- deploy a periphery module that borrows the cap without exposing it
+- wire a frontend against the `liquidlink-sdk` or raw Move calls for user dashboards
+
+Everything below mirrors the repo layout so you can copy/paste commands directly.
+
+## Prerequisites
+
+- **Tooling:** Install the IOTA Move CLI (or Sui CLI if you target Sui) and make sure it can publish packages and call entry functions.
+- **Admin contact:** You do **not** deploy the core package yourself. Instead, contact LiquidLink so they can issue a `ProjectCap` + `PointCap` from the canonical deployment. (For local testing you can still run the Move tests with `test_scenario`.)
+- **Source tree:** The integration examples live under `iota/integrate_example`:
+  - `periphery` – Move module that stores `PointCap` inside a shared object and exposes helpers such as `award_points`.
+  - `frontend` – Next.js + `@iota/dapp-kit` demo UI.
+
+## 1. Request project capabilities
+
+LiquidLink operates the production `liquidlink_incenctive_system` deployment and holds the `ProtocolAdminCap`. Project teams request an allocation by submitting the address that should custody the caps. Internally the LiquidLink admin runs:
+
+```bash
+iota client call --package <CORE_PACKAGE_ID> \
+  --module router \
+  --function create_incentive_system \
+  --args <PROTOCOL_ADMIN_CAP_ID> <PROJECT_OWNER_ADDRESS> \
+  --gas-budget 200000000
+```
+
+You will then receive:
+
+- `ProjectCap` – used once per scoreboard creation.
+- `PointCap` – used for every scoring mutation; keep it offline until wrapped into a `CapStore`.
+
+If a cap is compromised, notify LiquidLink immediately so we can revoke/replace it.
+
+## 2. Create a shared scoreboard
+
+```bash
+iota client call --package <CORE_PACKAGE_ID> \
+  --module router \
+  --function entry_create_scoreboard \
+  --args <PROJECT_CAP_ID> <kind> \
+  --gas-budget 200000000
+```
+
+`kind = 0` produces a simple add/sub scoreboard. `kind = 1` enables linear-time accumulation (requires providing a `Clock` later). Record the returned shared-object ID—this becomes your per-project scoreboard.
+
+## 3. Deploy the periphery helper
+
+The `iota/integrate_example/periphery` module demonstrates best practices:
+
+```bash
+cd ../integrate_example/periphery
+iota move build
+iota client publish --gas-budget 500000000
+```
+
+Publishing gives you a `PERIPHERY_PACKAGE_ID` plus a custom `YourAdminCap`. The module exposes:
+
+- `new_cap_store(admin_cap, point_cap)` – stores the sensitive `PointCap` inside a shared `CapStore`, preventing arbitrary transfers.
+- `award_points(cap_store, scoreboard, amount)` / `claw_back_points(...)` – wrappers that borrow the cap and route to `router::add_point` / `router::subtract_point`.
+- `reward_purchase(cap_store, scoreboard, purchase_value)` – shows how to map business logic (e.g., `POINTS_PER_PURCHASE_UNIT`) to `award_points`.
+- `start_linear_reward` / `update_linear_reward` – convenience wrappers for linear scoreboards; you pass `Clock` and new parameters, the helper ensures capability matching.
+
+### Store the `PointCap`
+
+```bash
+iota client call --package <PERIPHERY_PACKAGE_ID> \
+  --module periphery \
+  --function new_cap_store \
+  --args <YOUR_ADMIN_CAP_ID> <POINT_CAP_ID> \
+  --gas-budget 100000000
+```
+
+Keep the returned `CapStore` object ID; workers or other contracts can now reference `CapStore` + `Scoreboard` without touching the raw capability.
+
+### Common transactions
+
+```bash
+# arbitrary award
+iota client call --package <PERIPHERY_PACKAGE_ID> \
+  --module periphery \
+  --function award_points \
+  --args <CAP_STORE_ID> <SCOREBOARD_ID> 50 \
+  --gas-budget 100000000
+
+# purchase multiplier demo (POINTS_PER_PURCHASE_UNIT = 10)
+iota client call --package <PERIPHERY_PACKAGE_ID> \
+  --module periphery \
+  --function reward_purchase \
+  --args <CAP_STORE_ID> <SCOREBOARD_ID> 3 \
+  --gas-budget 100000000
+
+# claw back for refunds
+iota client call --package <PERIPHERY_PACKAGE_ID> \
+  --module periphery \
+  --function claw_back_points \
+  --args <CAP_STORE_ID> <SCOREBOARD_ID> 5 \
+  --gas-budget 100000000
+
+# linear reward (kind must be 1, Clock address depends on chain)
+iota client call --package <PERIPHERY_PACKAGE_ID> \
+  --module periphery \
+  --function start_linear_reward \
+  --args <CAP_STORE_ID> <LINEAR_SCOREBOARD_ID> 100 60000 0x6 \
+  --gas-budget 200000000
+```
+
+## 4. Frontend wiring
+
+Under `iota/integrate_example/frontend` you’ll find a Next.js app configured with:
+
+- `@iota/dapp-kit` for wallet connection
+- React Query for data fetching
+- Example hooks that call the `liquidlink-sdk` client
+
+Focus on:
+
+- `components` – shared UI blocks for displaying scores.
+- `hooks/useScoreboard.ts` – fetcher that calls `Client.getScoreInfo` / `getComputedScore`.
+- `lib/network.ts` – holds the scoreboard IDs and package metadata you recorded earlier.
+
+Run it with:
+
+```bash
+cd ../frontend
+bun install
+bun dev
+```
+
+Update `TARGET_ADDRESS`, scoreboard IDs, and package IDs to match your deployment.
+
+## 5. Testing strategy
+
+- **Unit tests:** `iota/liquidlink_incenctive_system/tests/liquidlink_incenctive_system_tests.move` covers router flows, linear logic, and cap matching. Run `iota move test`.
+- **Periphery tests:** Add Move tests under `integrate_example/periphery/tests` to mirror your custom business logic.
+- **End-to-end:** After storing a `PointCap` in the `CapStore`, simulate award/claw-back transactions and verify events via `liquidlink-sdk` (`getEventsByAddress`) or the chain explorer.
+
+## Checklist
+
+- [ ] Project team received `ProjectCap` + `PointCap` from LiquidLink admin.
+- [ ] Shared `Scoreboard` created and ID documented.
+- [ ] `PointCap` stored in `CapStore`.
+- [ ] Frontend configured with correct IDs + RPC endpoints.
+
+Once all boxes are checked your project can award points, claw them back, run linear-time campaigns, and display user balances confidently.

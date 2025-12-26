@@ -1,0 +1,25 @@
+---
+title: Incentive System Objectives
+description: Goals and requirements that shape the LiquidLink incentive contract.
+---
+
+### Overview
+
+Architecture goals for LiquidLink v2: deliver a flexible, verifiable scoring system that lets multiple parties award points concurrently, convert points into consumable assets that only circulate within the LiquidLink protocol, and keep the data model simple, extensible, and easy to integrate.
+
+### Functional Requirements
+
+- **Scoring modes:** support simple add/subtract and time-weighted accumulation; allow multiple updates to the same account.
+- **Scoring actors:** scoring rights are granted on-chain via capability objects (cap/borrow); projects update scores directly in the same transaction (no off-chain indexer required).
+- **Verification:** any party can verify any account’s points from on-chain state; events are emitted for audit/logging only (not required as a source of truth).
+- **Point trading:** points can be redeemed into consumable objects that are tradable only within the LiquidLink protocol.
+
+### Non-Functional Requirements
+
+- **Easy integration:** clear APIs and examples so projects can onboard with low effort.
+- **Minimal data model:** keep objects lean to avoid heavy migrations during upgrades.
+- **Scalable:** architecture should scale horizontally with scoring events and trading volume.
+
+### Summary
+
+This version uses capability-based authorization to enable multi-party on-chain scoring without an indexer, and keeps events as an audit trail. Redeemed assets stay inside the LiquidLink protocol to keep risk bounded. A minimal data model plus SDK and examples lowers integration cost and leaves room for future feature growth.

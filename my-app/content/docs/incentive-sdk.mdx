@@ -1,0 +1,158 @@
+---
+title: Incentive SDK
+description: SDK client for Liquidlink scoreboards on Sui/IOTA, built on top of `unimove-sdk`.
+---
+## Installation
+
+```bash
+npm install liquidlink-sdk
+```
+
+## Example
+
+The following example matches `index.ts`:
+
+```ts
+import { Client } from "liquidlink-sdk";
+
+const TARGET_ADDRESS = "0x..."
+const REGULAR_SCOREBOARD_ID = "0x..."
+const LINEAR_SCOREBOARD_ID = "0x..."
+
+const sdk = new Client({ chain: "iota", network: "testnet" });
+console.log("Regular Scoreboard");
+console.log(
+  "getScoreInfo",
+  await sdk.getScoreInfo({
+    scoreboardId: REGULAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+  }),
+);
+
+console.log(
+  "getComputedScore",
+  await sdk.getComputedScore({
+    scoreboardId: REGULAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+    opts: { linear: false },
+  }),
+);
+
+console.log("Linear Scoreboard");
+
+console.log(
+  "getScoreInfo",
+  await sdk.getScoreInfo({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+  }),
+);
+
+console.log(
+  "getComputedScore",
+  await sdk.getComputedScore({
+    scoreboardId: LINEAR_SCOREBOARD_ID,
+    targetAddress: TARGET_ADDRESS,
+    opts: { linear: true },
+  }),
+);
+
+console.log("getAvailableEventTypes", sdk.getAvailableEventTypes());
+
+console.log(
+  "getEventsByAddress",
+  await sdk.getEventsByAddress({
+    //   scoreboardId: "scoreboard_1_id",
+    scoreboardIds: [
+      "scoreboard_1_id",
+      "scoreboard_2_id",
+      "scoreboard_3_id",
+    ],
+    targetAddress: TARGET_ADDRESS,
+    //   eventTypes: [
+    //     "0x...::event::ScoreAdded",
+    //     "0x...::event::ScoreSubtracted",
+    //     "0x...::event::LinearTimeScoreSet",
+    //     "0x...::event::LinearTimeScoreUpdated",
+    //   ],
+    limit: 5,
+    //   order: "descending",
+  }),
+);
+```
+
+## Client API
+
+### `new Client({ chain, network, rpcUrl? })`
+
+Creates a client for a specific chain/network.
+
+Parameters:
+- `chain`: `"sui"` or `"iota"`.
+- `network`: `"mainnet"` or `"testnet"` (default `"mainnet"`).
+- `rpcUrl`: optional RPC endpoint override (defaults to the chain SDK fullnode URL).
+
+### `getClient()`
+
+Returns the underlying chain client instance from the selected SDK.
+
+### `getConfig()`
+
+Returns the chain/network config from `src/consts.ts` (package IDs, etc.).
+
+### `getAvailableEventTypes()`
+
+Returns fully-qualified Move event type strings for the current chain/network package.
+
+Returns:
+- `string[]` of event type names.
+
+### `getScoreInfo({ scoreboardId, targetAddress })`
+
+Fetches the score entry for an address within a scoreboard. If no entry exists, returns zeroed fields.
+
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
+
+Returns (numbers):
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
+
+### `getComputedScore({ scoreboardId, targetAddress, opts? })`
+
+Computes a score based on `getScoreInfo`.
+
+- When `opts.linear` is `true`, it applies a linear time-based computation using `scorePerDuration`.
+
+Parameters:
+- `scoreboardId`: scoreboard object id.
+- `targetAddress`: address to query.
+- `opts.linear`: enable time-based linear scoring (default `false`).
+
+Returns (numbers):
+- `computedScore`
+- `duration`
+- `score`
+- `scorePerDuration`
+- `updatedAt`
+
+### `getEventsByAddress({ targetAddress, eventTypes?, scoreboardId?, scoreboardIds?, cursor?, limit?, order? })`
+
+Fetches events by sender address and filters them on the client side.
+
+Required:
+- Provide `scoreboardId` or `scoreboardIds` (throws if neither is provided).
+
+Parameters:
+- `targetAddress`: sender address for the RPC query.
+- `eventTypes`: fully-qualified Move event types to include (default: all event types; use `getAvailableEventTypes()` to list valid values).
+- `scoreboardId`/`scoreboardIds`: filter by `parsedJson.scoreboard_id`.
+- `cursor`: pagination cursor from a previous call (default: none).
+- `limit`: max number of events to fetch (default `100`).
+- `order`: `"ascending"` or `"descending"` (default `"descending"`).
+
+Returns:
+- `{ data, cursor, hasNextPage }`, where `cursor` is the `nextCursor` for pagination and `hasNextPage` indicates whether more results are available.
