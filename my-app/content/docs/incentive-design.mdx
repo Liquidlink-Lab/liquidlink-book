@@ -109,12 +109,19 @@ Events are for audit/indexing only; `Scoreboard` state is the source of truth.
 ## Flowchart
 
 ```mermaid
-flowchart LR
-    Admin["Protocol Admin\n(ProtocolAdminCap)"] -->|create_incentive_system| Caps["ProjectCap + PointCap"]
-    Caps -->|create_scoreboard| Scoreboard["Shared Scoreboard"]
-    Caps -->|share PointCap| Project["Project Contracts"]
+flowchart TD
+    Admin["Protocol Admin\n(ProtocolAdminCap)"]
+    Caps["ProjectCap + PointCap"]
+    Project["Project Contracts"]
+    Scoreboard["Shared Scoreboard"]
+    EventLog["Event Stream"]
+    Users["Users / Integrators"]
+
+    Admin -->|create_incentive_system| Caps
+    Caps -->|create_scoreboard| Scoreboard
+    Caps -->|share PointCap| Project
     Project -->|add_point / subtract_point| Scoreboard
     Project -->|set/update linear time| Scoreboard
-    Scoreboard -->|emit events| EventLog["Event Stream"]
-    Scoreboard -->|read state| Users["Users / Integrators"]
+    Scoreboard -->|emit events| EventLog
+    Scoreboard -->|read state| Users
 ```

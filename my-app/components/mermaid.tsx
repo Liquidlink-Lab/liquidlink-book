@@ -1,39 +1,60 @@
-const DEFAULT_THEME = 'default';
+'use client';
 
-function encodeChart(chart: string): string {
-  const payload = JSON.stringify({
-    code: chart,
-    mermaid: { theme: DEFAULT_THEME },
-  });
+import { use, useEffect, useId, useState } from 'react';
+import { useTheme } from 'next-themes';
 
-  if (typeof window === 'undefined') {
-    return Buffer.from(payload).toString('base64');
-  }
+export function Mermaid({ chart }: { chart: string }) {
+  const [mounted, setMounted] = useState(false);
 
-  if (typeof btoa === 'function') {
-    return btoa(unescape(encodeURIComponent(payload)));
-  }
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Fallback: best-effort UTF-8 encoding
-  return Buffer.from(payload).toString('base64');
+  if (!mounted) return;
+  return <MermaidContent chart={chart} />;
 }
 
-type MermaidProps = {
-  chart: string;
-};
+const cache = new Map<string, Promise<unknown>>();
 
-export function Mermaid({ chart }: MermaidProps) {
-  const encoded = encodeChart(chart);
-  const src = `https://mermaid.ink/img/${encoded}?type=svg&scale=2`;
+function cachePromise<T>(
+  key: string,
+  setPromise: () => Promise<T>,
+): Promise<T> {
+  const cached = cache.get(key);
+  if (cached) return cached as Promise<T>;
+
+  const promise = setPromise();
+  cache.set(key, promise);
+  return promise;
+}
+
+function MermaidContent({ chart }: { chart: string }) {
+  const id = useId();
+  const { resolvedTheme } = useTheme();
+  const { default: mermaid } = use(
+    cachePromise('mermaid', () => import('mermaid')),
+  );
+
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'loose',
+    fontFamily: 'inherit',
+    themeCSS: 'margin: 1.5rem auto 0;',
+    theme: resolvedTheme === 'dark' ? 'dark' : 'default',
+  });
+
+  const { svg, bindFunctions } = use(
+    cachePromise(`${chart}-${resolvedTheme}`, () => {
+      return mermaid.render(id, chart.replaceAll('\\n', '\n'));
+    }),
+  );
 
   return (
-    <div className="mx-auto my-6 w-full max-w-6xl overflow-auto">
-      <img
-        src={src}
-        alt="Mermaid diagram"
-        className="h-auto w-full rounded-lg border border-fd-border bg-fd-card p-4"
-        loading="lazy"
-      />
-    </div>
+    <div
+      ref={(container) => {
+        if (container) bindFunctions?.(container);
+      }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   );
 }
